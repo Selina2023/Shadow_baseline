@@ -1,0 +1,76 @@
+import pdb 
+import numpy as np
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+import numpy as np
+import pdb
+
+
+
+@dataclass
+class BoundingBox:
+    xmin: int
+    ymin: int
+    xmax: int
+    ymax: int
+
+    @property
+    def xyxy(self) -> List[float]:
+        return [self.xmin, self.ymin, self.xmax, self.ymax]
+
+
+@dataclass
+class DetectionResult:
+    score: float
+    label: str
+    box: BoundingBox
+    mask: Optional[np.array] = None
+
+    @classmethod
+    def from_dict(cls, detection_dict: Dict) -> "DetectionResult":
+        return cls(
+            score=detection_dict["score"],
+            label=detection_dict["label"],
+            box=BoundingBox(
+                xmin=detection_dict["box"]["xmin"],
+                ymin=detection_dict["box"]["ymin"],
+                xmax=detection_dict["box"]["xmax"],
+                ymax=detection_dict["box"]["ymax"],
+            ),
+        )
+
+def resize_image_to_rectangle(img, target_height, target_width):
+    """
+    Resize an image to a rectangle shape with the target height and width.
+    Set the image in the center of the rectangle and leave the rest as black.
+    """
+    assert(img.shape[0] == target_height)
+    if img.shape[0] == img.shape[1]:
+        new_img = np.zeros((target_height, target_width, 3), dtype=np.uint8)
+        dp = (target_width - target_height) // 2
+        new_img[:, dp:dp+target_height] = img
+        img = new_img
+    return img, dp
+
+
+
+def resize_img_to_square(img: np.ndarray) -> np.ndarray:
+    """Resize an image to a square shape using the smallest dim as square length."""
+    img_w = img.shape[1]
+    img_h = img.shape[0]
+    min_dim = min(img_w, img_h)
+    if img_w > min_dim:
+        diff = img_w - min_dim
+        img = img[:, diff//2:diff//2+min_dim]
+    elif img_h > min_dim:
+        diff = img_h - min_dim
+        img = img[diff//2:diff//2+min_dim, :]
+    return img
+
+def center_image_with_black_background(image, target_size):
+    new_image = np.zeros((target_size, target_size, 3), dtype=np.uint8)
+    x_offset = (target_size - image.shape[1]) // 2
+    y_offset = (target_size - image.shape[0]) // 2
+    new_image[y_offset:y_offset+image.shape[0],
+              x_offset:x_offset+image.shape[1]] = image
+    return new_image
